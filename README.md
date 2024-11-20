@@ -53,6 +53,8 @@ Dataset used in this study is provided in `datasets`
 
 Other datasets (PubMed and CiteSeer) can be obtained from [stellargraph library](https://stellargraph.readthedocs.io/en/v0.9.0/_modules/stellargraph/datasets/datasets.html). 
 
+See [DATASETS.md](DATASETS.md) for dataset provenance and local storage notes.
+
 ## Getting the code
 
 You can download a copy of all the files in this repository by cloning the

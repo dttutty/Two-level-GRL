@@ -1,8 +1,10 @@
 *.zip
 *.py[cod]
 __pycache__/
+.venv/
 .DS_Store
 
-# Downloaded or generated datasets.
+# Large downloaded or generated datasets.
 /dataset_WWW2019/
 /datasets/Citeseer/
+/leizhao_datasets/
