@@ -1,26 +1,21 @@
-import pandas as pd
-import os
-
-import stellargraph as sg
-from stellargraph.mapper import FullBatchNodeGenerator
-from stellargraph.layer import GCN, LinkEmbedding
-from tensorflow.keras.callbacks import EarlyStopping
-from tensorflow import keras
-
-from tensorflow.keras import layers, optimizers, losses, metrics, Model
-from sklearn import preprocessing, feature_extraction, model_selection
-from IPython.display import display, HTML
-import matplotlib.pyplot as plt
-
 import time
+
+import numpy as np
+import stellargraph as sg
+from stellargraph import StellarGraph
+from stellargraph.mapper import FullBatchNodeGenerator, FullBatchLinkGenerator
+from stellargraph.layer import GCN, LinkEmbedding
+from stellargraph.data import EdgeSplitter
+from sklearn import preprocessing, model_selection
+from tensorflow import keras
+from tensorflow.keras import layers, optimizers, losses, Model
+from tensorflow.keras.callbacks import EarlyStopping
+
 class GCNModel():
     def node_classification(G, node_subjects):
         # Splitting the data
-        epochs = 20  
         train_size = 0.2
         test_size = 0.15
-        val_size = 0.2
-        batch_size = 50
         train_subjects, test_subjects = model_selection.train_test_split(node_subjects, train_size=train_size, test_size=None, stratify=node_subjects)
         val_subjects, test_subjects = model_selection.train_test_split(test_subjects, train_size=test_size, test_size=None, stratify=test_subjects)
 
@@ -47,7 +42,7 @@ class GCNModel():
         # Training the model
         model = Model(inputs=x_inp, outputs=predictions)
         model.compile(
-            optimizer=optimizers.Adam(lr=0.01),
+            optimizer=optimizers.Adam(learning_rate=0.01),
             loss=losses.categorical_crossentropy,
             metrics=["acc"],
         )
@@ -148,7 +143,7 @@ class GCNModel():
         model = keras.Model(inputs=x_inp, outputs=prediction)
 
         model.compile(
-            optimizer=keras.optimizers.Adam(lr=0.01),
+            optimizer=keras.optimizers.Adam(learning_rate=0.01),
             loss=keras.losses.binary_crossentropy,
             metrics=["acc"],
         )
@@ -171,7 +166,10 @@ class GCNModel():
             print("\t{}: {:0.4f}".format(name, val))
 
 
-    def subgraph_learning(subgraphList):
+    def subgraph_learning(ig, subgraphList, fea_mat, node_subjects=None):
+        if node_subjects is None:
+            raise ValueError("node_subjects is required for GCN subgraph learning")
+
         subgraph = ig.induced_subgraph(subgraphList,implementation="create_from_scratch")
         fea_mat_temp = fea_mat[fea_mat.index.isin(subgraph.vs['_nx_name'])] # subgraph들의 feature 추출
         
@@ -186,7 +184,7 @@ class GCNModel():
         subnode_subjects, train_size=0.7, test_size=None
         )
         val_subjects, test_subjects = model_selection.train_test_split(
-            subnode_subjects, train_size=0.5, test_size=None
+            test_subjects, train_size=0.5, test_size=None
         )
         
         target_encoding = preprocessing.LabelBinarizer()
@@ -226,7 +224,6 @@ class GCNModel():
 
         all_nodes = subnode_subjects.index
         all_gen = generator.flow(all_nodes)
-        all_targets = target_encoding.fit_transform(node_subjects)
 
         embedding_model = Model(inputs=x_inp, outputs=x_out)
         

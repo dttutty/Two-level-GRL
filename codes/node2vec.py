@@ -17,6 +17,7 @@ from stellargraph.mapper import Node2VecLinkGenerator, Node2VecNodeGenerator
 from stellargraph.layer import Node2Vec, link_classification
 from stellargraph.data import EdgeSplitter
 import multiprocessing
+import time
 from gensim.models import Word2Vec
 
 from sklearn.pipeline import Pipeline
@@ -56,7 +57,7 @@ class Node2VecModel():
         model = keras.Model(inputs=x_inp, outputs=prediction)
 
         model.compile(
-            optimizer=keras.optimizers.Adam(lr=1e-3),
+            optimizer=keras.optimizers.Adam(learning_rate=1e-3),
             loss=keras.losses.binary_crossentropy,
             metrics=[keras.metrics.binary_accuracy],
         )
@@ -76,13 +77,13 @@ class Node2VecModel():
         x_out_src = x_out[0]
         embedding_model = keras.Model(inputs=x_inp_src, outputs=x_out_src)
 
-        node_gen = Node2VecNodeGenerator(G, batch_size).flow(subjects.index)
+        node_gen = Node2VecNodeGenerator(G, batch_size).flow(node_subjects.index)
         node_embeddings = embedding_model.predict(node_gen, workers=4, verbose=1)
 
         # X will hold the 128-dimensional input features
         X = node_embeddings
         # y holds the corresponding target values
-        y = np.array(subjects)
+        y = np.array(node_subjects)
 
         # Baseline Performance Evaluation
         X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.1, test_size=None)
@@ -95,10 +96,11 @@ class Node2VecModel():
         y_pred = clf.predict(X_test)
         # Evaluate the baseline model on the test data 
         accuracy_score(y_test, y_pred)
+        return node_embeddings
 
     def link_prediction(G):
         # Define an edge splitter on the original graph:
-        edge_splitter_test = EdgeSplitter(graph)
+        edge_splitter_test = EdgeSplitter(G)
 
         # Randomly sample a fraction p=0.1 of all positive links, and same number of negative links, from graph, and obtain the
         # reduced graph graph_test with the sampled links removed:
@@ -107,7 +109,7 @@ class Node2VecModel():
         )
 
         # Do the same process to compute a training subset from within the test graph
-        edge_splitter_train = EdgeSplitter(graph_test, graph)
+        edge_splitter_train = EdgeSplitter(graph_test, G)
         graph_train, examples, labels = edge_splitter_train.train_test_split(
             p=0.1, method="global"
         )
@@ -259,29 +261,37 @@ class Node2VecModel():
             f"ROC AUC score on test set using '{best_result['binary_operator'].__name__}': {test_score}"
         )
 
-    def subgraph_learning(subgraphList):
+    def subgraph_learning(ig, subgraphList, fea_mat, node_subjects=None):
+        dimensions = 128
+        num_walks = 10
+        walk_length = 80
+        window_size = 10
+        num_iter = 1
+        workers = multiprocessing.cpu_count()
+        p = 1.0
+        q = 1.0
+
         subgraph = ig.induced_subgraph(subgraphList,implementation="create_from_scratch")
-        isin_filter = node_features_encoded['userID'].isin(subgraph.vs['id'])
-        
-        subgraph_features = node_features_encoded[isin_filter]
-        subgraph_country_degree = pd.concat([subgraph_features['countrycode_encoded'], subgraph_features['degree']],axis=1)
-        subgraph_country_degree.reset_index(drop=True,inplace=True)
-        
-        subgraph_ = StellarGraph.from_networkx(subgraph.to_networkx(), node_type_default = "user", edge_type_default = "friendship", node_features = subgraph_country_degree)
+        subgraph_ = StellarGraph.from_networkx(
+            subgraph.to_networkx(),
+            node_type_default="user",
+            edge_type_default="friendship",
+        )
         
         rw = BiasedRandomWalk(subgraph_)
         walks = rw.run(subgraph_.nodes(), n=num_walks, length=walk_length, p=p, q=q)
+        walks = [[str(node) for node in walk] for walk in walks]
 
         model = Word2Vec(
             walks,
-            vector_size =dimensions,
+            size=dimensions,
             window=window_size,
             min_count=0,
             sg=1,
             workers=workers,
-            epochs=num_iter,
+            iter=num_iter,
         )
 
-        return model.wv
+        return np.asarray([model.wv[str(node)] for node in subgraph_.nodes()])
 
     

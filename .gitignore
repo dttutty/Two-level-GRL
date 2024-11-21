@@ -2,6 +2,7 @@
 *.py[cod]
 __pycache__/
 .venv/
+.ruff_cache/
 .DS_Store
 
 # Large downloaded or generated datasets.

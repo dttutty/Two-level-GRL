@@ -1,20 +1,17 @@
 import random
-random.seed(0)
-
-import numpy as np
-np.random.seed(0)
 import time
-import pandas as pd
-import numpy as np
-import networkx as nx
+from collections import defaultdict, Counter
 import argparse
+import numpy as np
+import pandas as pd
 from graphConstructor import graphloader
 from communityDetection import communityDetector
 from igraph import *
-from collections import defaultdict, Counter
 import stellargraph as sg
-import os
+
 #.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
+random.seed(0)
+np.random.seed(0)
 def main():
     
     parser = argparse.ArgumentParser("Two-Level GRL")
@@ -125,7 +122,7 @@ def main():
         # Local GRL 
         for commu in range(len(cd_algo)):
             if len(cd_algo[commu]) >= size_thresh: # If Major Community
-                sub_node_embeddings = model.subgraph_learning(ig, cd_algo[commu], fea_mat)
+                sub_node_embeddings = model.subgraph_learning(ig, cd_algo[commu], fea_mat, node_subjects)
                 print("cd_algo's length : {}, sub_node_emb's shape : {}".format(len(cd_algo[commu]),len(sub_node_embeddings)))
 
                 # Overwrite from subgraph embeddings
