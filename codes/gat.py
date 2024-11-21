@@ -1,17 +1,14 @@
-import networkx as nx
-import pandas as pd
-import numpy as np
-import keras
 import os
 import time
+
+import numpy as np
 import stellargraph as sg
+from stellargraph import StellarGraph
 from stellargraph.mapper import FullBatchNodeGenerator
 from stellargraph.layer import GAT
-
-from tensorflow.keras import layers, optimizers, losses, metrics, Model
-from sklearn import preprocessing, feature_extraction, model_selection
-from stellargraph import datasets
-import matplotlib.pyplot as plt
+from sklearn import preprocessing, model_selection
+from tensorflow import keras
+from tensorflow.keras import layers, optimizers, losses, Model
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
 
 
@@ -53,7 +50,7 @@ class GATModel():
         x_inp, predictions = gat.in_out_tensors()
         model = Model(inputs=x_inp, outputs=predictions)
         model.compile(
-            optimizer=optimizers.Adam(lr=0.005),
+            optimizer=optimizers.Adam(learning_rate=0.005),
             loss=losses.categorical_crossentropy,
             metrics=["acc"],
         )
@@ -125,9 +122,13 @@ class GATModel():
         print("Evaluate the baseline performance on node classification task")
         results = model_emb.evaluate(X_test, y_test, batch_size=128)
         print("test loss, test acc:", results)
+        return X
 
 
-    def subgraph_learning(subgraphList,fea_mat):
+    def subgraph_learning(ig, subgraphList, fea_mat, node_subjects=None):
+        if node_subjects is None:
+            raise ValueError("node_subjects is required for GAT subgraph learning")
+
         subgraph = ig.induced_subgraph(subgraphList,implementation="create_from_scratch")
         fea_mat_temp = fea_mat[fea_mat.index.isin(subgraph.vs['_nx_name'])] # subgraph들의 feature 추출
         
@@ -135,14 +136,14 @@ class GATModel():
         
         generator = FullBatchNodeGenerator(subgraph_, method="gat")
         
-        node_subjects = labels[labels.index.isin(subgraph.vs['_nx_name'])].reset_index(drop=True) # subgraph들의 라벨
+        subnode_subjects = node_subjects[node_subjects.index.isin(subgraph.vs['_nx_name'])].reset_index(drop=True) # subgraph들의 라벨
         
         # Split
         train_subjects, test_subjects = model_selection.train_test_split(
-        node_subjects, train_size=0.7, test_size=None
+        subnode_subjects, train_size=0.7, test_size=None
         )
         val_subjects, test_subjects = model_selection.train_test_split(
-            node_subjects, train_size=0.5, test_size=None
+            test_subjects, train_size=0.5, test_size=None
         )
         
         target_encoding = preprocessing.LabelBinarizer()
@@ -190,9 +191,8 @@ class GATModel():
             callbacks=[es_callback, mc_callback],
         )
 
-        all_nodes = node_subjects.index
+        all_nodes = subnode_subjects.index
         all_gen = generator.flow(all_nodes)
-        all_targets = target_encoding.fit_transform(node_subjects)
         
         emb_layer = next(l for l in model.layers if l.name.startswith("graph_attention"))
         embedding_model = Model(inputs=x_inp, outputs=emb_layer.output)

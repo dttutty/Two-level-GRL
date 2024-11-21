@@ -58,7 +58,7 @@ class GraphSAGEModel():
         # Training the model
         model = Model(inputs=x_inp, outputs=prediction)
         model.compile(
-            optimizer=optimizers.Adam(lr=0.005),
+            optimizer=optimizers.Adam(learning_rate=0.005),
             loss=losses.categorical_crossentropy,
             metrics=["acc"],
         )
@@ -196,13 +196,13 @@ class GraphSAGEModel():
         
         return node_embeddings
 
-    def subgraph_learning(ig, subgraphList, node_features):
+    def subgraph_learning(ig, subgraphList, fea_mat, node_subjects=None):
         val_size = 0.2
         batch_size = 50
         num_samples = [10, 5]
         layer_sizes=[32, 32]
         subgraph = ig.induced_subgraph(subgraphList,implementation="create_from_scratch")
-        subnode_features = node_features[node_features.index.isin(subgraph.vs['_nx_name'])] # subgraph들의 feature 추출
+        subnode_features = fea_mat[fea_mat.index.isin(subgraph.vs['_nx_name'])] # subgraph들의 feature 추출
 
         subgraph_ = StellarGraph.from_networkx(subgraph.to_networkx(), node_features = subnode_features)
     
