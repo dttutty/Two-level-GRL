@@ -1,0 +1,72 @@
+{
+    "configurations": [
+        {
+            "type": "debugpy",
+            "request": "launch",
+            "name": "Launch Main",
+            "program": "${workspaceFolder}/codes/main.py",
+            "args": [
+                "--dataset",
+                "${input:dataset}",
+                "--size_thresh",
+                "${input:size_thresh}",
+                "--model",
+                "${input:model}",
+                "--task",
+                "${input:task}",
+                "--cd_algo",
+                "${input:cd_algo}"
+            ]
+        }
+    ],
+    "inputs": [
+        {
+            "type": "pickString",
+            "id": "dataset",
+            "description": "Select the dataset",
+            "options": [
+                "Foursquare",
+                "Flickr",
+                "PubMed",
+                "CiteSeer"
+            ]
+        },
+        {
+            "type": "promptString",
+            "id": "size_thresh",
+            "description": "Enter the size threshold"
+        },
+        {
+            "type": "pickString",
+            "id": "model",
+            "description": "Select the base GRL model",
+            "options": [
+                "gcn",
+                "graphsage",
+                "gat",
+                "node2vec"
+            ]
+        },
+        {
+            "type": "pickString",
+            "id": "task",
+            "description": "Select the task type",
+            "options": [
+                "node",
+                "link"
+            ]
+        },
+        {
+            "type": "pickString",
+            "id": "cd_algo",
+            "description": "Select the community detection algorithm",
+            "options": [
+                "LP",
+                "MM",
+                "EG",
+                "RW",
+                "IM"
+            ]
+        }
+    ]
+}
